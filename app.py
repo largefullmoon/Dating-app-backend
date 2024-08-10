@@ -45,3 +45,10 @@ def registerUser():
             print(f"Message sent successfully! SID: {sms_sid}")
         except Exception as e:
             print(f"Failed to send message: {e}")
+def send_sms(phone_number, message_body):
+    message = client.messages.create(
+        body=message_body,        # The body of the SMS message
+        from_=from_number,        # Your Twilio number
+        to=phone_number           # The recipient's phone number
+    )
+    return message.sid  # Return the message SID
