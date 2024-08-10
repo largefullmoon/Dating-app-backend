@@ -12,3 +12,7 @@ CORS(app, resources={r"/*": {"origins": "*"}})  # Adjust the origin to your Reac
 cors = CORS(app, resources={r"/*": {"origins": "*"}}, methods=["GET", "POST", "OPTIONS"])
 app.app_context().push()
 
+client = MongoClient("mongodb://127.0.0.1:27017/")
+db = client["Tyche"]
+users_collection = db["users"]
+chats_collection = db["chats"]
