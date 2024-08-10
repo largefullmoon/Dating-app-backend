@@ -58,3 +58,11 @@ def verifyCode():
     user = users_collection.find_one({"email":new_user["email"], "verifyCode": params["verifyCode"]}) # check if user exist
     if user:
         users_collection.update_one({'email': params["email"]}, {'$set':{'isVerified':True}})
+        
+        
+@app.route("/agreeTerms", methods=["POST"])
+def agreeTerms():
+    user_info = request.get_json()
+    user = users_collection.find_one({"email":new_user["email"]}) # check if user exist
+    if user:
+        users_collection.update_one({'email': user_info["email"]}, {'$set':{'termsAgreed':True}})
