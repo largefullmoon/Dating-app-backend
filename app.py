@@ -87,3 +87,8 @@ def selectPlan():
     user = users_collection.find_one({"email":plan_info["email"]}) # check if user exist
     if user:
         users_collection.update_one({'email': plan_info["email"]}, {'$set':{'plan':plan_info['plan']}})
+        
+@app.route("/getChatUsers", methods=["POST"])
+def getChatUsers():
+    users = users_collection.find({'isVerified': True, 'termsAgreed': True}) # check if user exist
+    return jsonify({'message': 'success', 'data': [user for user in users]}), 200
