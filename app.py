@@ -5,7 +5,12 @@ from flask_cors import CORS
 import hashlib
 from twilio.rest import Client
 import random
+from dotenv import load_dotenv
+import os
 
+account_sid = os.getenv('account_sid')
+auth_token = os.getenv('auth_token')
+from_number = os.getenv('from_number')
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})  # Adjust the origin to your React app's URL
@@ -98,3 +103,16 @@ def getChatHistory():
     user_info = request.get_json()
     chats = chats_collection.find_one({"from-email":plan_info["from-email"], "to-email":plan_info["to-email"]}) # check if user exist
     return jsonify({'message': 'success', 'data': [chat for chat in chats]}), 200
+
+
+app.route("/getAnswer", methods=["POST"])
+def getAnswer():
+    return "welcome to our app"
+
+app.route("/savePlan", methods=["POST"])
+def savePlan(): 
+    return "welcome to our app"
+
+@app.route("/signInApple", methods=["POST"])
+def signInApple():
+    return "welcome to our app" 
