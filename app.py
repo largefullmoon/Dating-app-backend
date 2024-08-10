@@ -92,3 +92,9 @@ def selectPlan():
 def getChatUsers():
     users = users_collection.find({'isVerified': True, 'termsAgreed': True}) # check if user exist
     return jsonify({'message': 'success', 'data': [user for user in users]}), 200
+
+@app.route("/getChatHistory", methods=["POST"])
+def getChatHistory():
+    user_info = request.get_json()
+    chats = chats_collection.find_one({"from-email":plan_info["from-email"], "to-email":plan_info["to-email"]}) # check if user exist
+    return jsonify({'message': 'success', 'data': [chat for chat in chats]}), 200
