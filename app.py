@@ -80,3 +80,10 @@ def uploadPhoto():
 
     file.save(f"/photos/{file.filename}")
     return 'File uploaded successfully', 200
+
+@app.route("/selectPlan", methods=["POST"])
+def selectPlan():
+    plan_info = request.get_json()
+    user = users_collection.find_one({"email":plan_info["email"]}) # check if user exist
+    if user:
+        users_collection.update_one({'email': plan_info["email"]}, {'$set':{'plan':plan_info['plan']}})
