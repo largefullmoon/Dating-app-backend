@@ -66,3 +66,17 @@ def agreeTerms():
     user = users_collection.find_one({"email":new_user["email"]}) # check if user exist
     if user:
         users_collection.update_one({'email': user_info["email"]}, {'$set':{'termsAgreed':True}})
+        
+        
+@app.route("/uploadPhoto", methods=["POST"])
+def uploadPhoto():
+    user_info = request.get_json()
+    if 'file' not in request.files:
+        return 'No file part', 400
+    file = request.files['file']
+    
+    if file.filename == '':
+        return 'No selected file', 400
+
+    file.save(f"/photos/{file.filename}")
+    return 'File uploaded successfully', 200
