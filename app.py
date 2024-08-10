@@ -52,3 +52,9 @@ def send_sms(phone_number, message_body):
         to=phone_number           # The recipient's phone number
     )
     return message.sid  # Return the message SID
+@app.route("/verifyCode", methods=["POST"])
+def verifyCode():
+    params = request.get_json()
+    user = users_collection.find_one({"email":new_user["email"], "verifyCode": params["verifyCode"]}) # check if user exist
+    if user:
+        users_collection.update_one({'email': params["email"]}, {'$set':{'isVerified':True}})
