@@ -7,6 +7,8 @@ from twilio.rest import Client
 import random
 from dotenv import load_dotenv
 import os
+from models.users import * 
+from services.twilio import * 
 
 account_sid = os.getenv('account_sid')
 auth_token = os.getenv('auth_token')
@@ -22,20 +24,20 @@ db = client["Tyche"]
 users_collection = db["users"]
 chats_collection = db["chats"]
 
-
+@app.route("/", methods=["get"])
+def welcome():
+    return "welcome"
 @app.route("/registerUser", methods=["POST"])
 def registerUser():
     new_user = request.get_json()
-    user = users_collection.find_one({"email": {"$regex": new_user["email"], "$options": "i"}}) # check if user exist
-    if not user:
+    isexists = checkUserExists(new_user["email"])
+    if isexists == False:
         try:
             verifyCode = random.randint(10000, 99999)
             message_body = 'Hello, This is your verification code for Tyche: '+ verifyCode
-            sms_sid = send_sms(new_user["phoneNumber"], message_body)
-            user_id = str(uuid4())
+            # sms_sid = send_sms(new_user["phoneNumber"], message_body)
             new_user["password"] = hashlib.sha256(new_user["password"].encode("utf-8")).hexdigest() # encrpt password
             user_json = {
-                "id": user_id,
                 'email': new_user['email'],
                 'firstName': new_user['firstName'],
                 'lastName': new_user['lastName'],
@@ -46,29 +48,23 @@ def registerUser():
                 'phoneNumber': new_user['phoneNumber'],
                 'verifyCode': verifyCode
             }
-            users_collection.insert_one(user_json)
-            print(f"Message sent successfully! SID: {sms_sid}")
+            saveUser(user_json)
+            return "success"
         except Exception as e:
-            print(f"Failed to send message: {e}")
-def send_sms(phone_number, message_body):
-    message = client.messages.create(
-        body=message_body,        # The body of the SMS message
-        from_=from_number,        # Your Twilio number
-        to=phone_number           # The recipient's phone number
-    )
-    return message.sid  # Return the message SID
+            return "failure"
+    else:
+        return "already exist"
 @app.route("/verifyCode", methods=["POST"])
 def verifyCode():
     params = request.get_json()
-    user = users_collection.find_one({"email":new_user["email"], "verifyCode": params["verifyCode"]}) # check if user exist
+    user = getUser({"email":params["email"], "verifyCode": params["verifyCode"]})
     if user:
         users_collection.update_one({'email': params["email"]}, {'$set':{'isVerified':True}})
-        
-        
+
 @app.route("/agreeTerms", methods=["POST"])
 def agreeTerms():
     user_info = request.get_json()
-    user = users_collection.find_one({"email":new_user["email"]}) # check if user exist
+    user = getUser({"email":user_info["email"]}) # check if user exist
     if user:
         users_collection.update_one({'email': user_info["email"]}, {'$set':{'termsAgreed':True}})
         
@@ -89,29 +85,25 @@ def uploadPhoto():
 @app.route("/selectPlan", methods=["POST"])
 def selectPlan():
     plan_info = request.get_json()
-    user = users_collection.find_one({"email":plan_info["email"]}) # check if user exist
+    user = getUser({"email":plan_info["email"]})
     if user:
         users_collection.update_one({'email': plan_info["email"]}, {'$set':{'plan':plan_info['plan']}})
         
 @app.route("/getChatUsers", methods=["POST"])
 def getChatUsers():
-    users = users_collection.find({'isVerified': True, 'termsAgreed': True}) # check if user exist
+    users = getAllUsers({'isVerified': True, 'termsAgreed': True})
     return jsonify({'message': 'success', 'data': [user for user in users]}), 200
 
 @app.route("/getChatHistory", methods=["POST"])
 def getChatHistory():
     user_info = request.get_json()
-    chats = chats_collection.find_one({"from-email":plan_info["from-email"], "to-email":plan_info["to-email"]}) # check if user exist
+    chats = chats_collection.find_one({"from-email":user_info["from-email"], "to-email":user_info["to-email"]}) # check if user exist
     return jsonify({'message': 'success', 'data': [chat for chat in chats]}), 200
 
 
 app.route("/getAnswer", methods=["POST"])
 def getAnswer():
-    return "welcome to our app"
-
-app.route("/savePlan", methods=["POST"])
-def savePlan(): 
-    return "welcome to our app"
+    return "welcome chat"
 
 @app.route("/signInApple", methods=["POST"])
 def signInApple():
