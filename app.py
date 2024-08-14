@@ -35,7 +35,7 @@ def registerUser():
         try:
             verifyCode = random.randint(10000, 99999)
             message_body = 'Hello, This is your verification code for Tyche: '+ verifyCode
-            # sms_sid = send_sms(new_user["phoneNumber"], message_body)
+            sms_sid = send_sms(new_user["phoneNumber"], message_body)
             new_user["password"] = hashlib.sha256(new_user["password"].encode("utf-8")).hexdigest() # encrpt password
             user_json = {
                 'email': new_user['email'],
