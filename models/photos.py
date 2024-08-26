@@ -3,6 +3,6 @@ client = MongoClient("mongodb://127.0.0.1:27017/")
 db = client["Tyche"]
 photos_collection = db["photos"]
 
-def getAllUsers(email):
-    photos = photos_collection.find({'isVerified': True, 'termsAgreed': True})
+def getPhotos(email):
+    photos = photos_collection.find({'email': email})
     return photos
