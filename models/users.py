@@ -13,8 +13,22 @@ def saveUser(user_json):
     users_collection.insert_one(user_json)
 
 def getAllUsers(where):
-    users = users_collection.find({'isVerified': True, 'termsAgreed': True})
+    users = users_collection.find(where)
     return users
 def getUser(where):
     user = users_collection.find_one({'isVerified': True, 'termsAgreed': True})
     return user
+
+def getUserDataForMatching(email):
+    user = users_collection.find_one({"email": email}, {"_id": False})
+    return user
+    
+def getAllUsersDataForMatching(email):
+    users = users_collection.find({"email": {"$ne": email}}, {"_id": False})
+    return users
+
+def insertAnswers(answer_info):
+    user = users_collection.find_one({"email": answer_info['email']}, {"_id": False})
+    questions = user['questions']
+    questions.append({'question': answer_info['question'], 'answer': answer_info['answer']})
+    users_collection.update_one({"email": answer_info['email']}, {"$set": {'questions': questions}})

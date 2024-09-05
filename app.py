@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 import os
 from models.users import * 
 from models.photos import * 
+from models.chats import * 
 from services.twilio import * 
 # from flask_socketio import SocketIO, send
 
@@ -95,6 +96,7 @@ def getPhoto(filename):
 def getPhotoList():
     user_info = request.get_json()
     photos = getPhotos(user_info['email'])
+    return jsonify({'status': 'success', 'photos': photos}), 200
 @app.route("/uploadPhoto", methods=["POST"])
 def uploadPhoto():
     if 'file' not in request.files:
@@ -109,10 +111,14 @@ def uploadPhoto():
     # Ensure the 'photos' directory exists
     if not os.path.exists('photos'):
         os.makedirs('photos')
-
-    # Save the file to the specified location
-    file.save(os.path.join('photos', file.filename))
-    print("File uploaded successfully")
+    try:
+        # Save the file to the specified location
+        file.save(os.path.join('photos', file.filename))
+        print("File uploaded successfully")
+        params = request.get_json()
+        user = getUser({"email": params["email"]})
+    except:
+        print("File upload failed")
     return 'File uploaded successfully', 200
 
 @app.route("/selectPlan", methods=["POST"])
@@ -121,17 +127,35 @@ def selectPlan():
     user = getUser({"email":plan_info["email"]})
     if user:
         users_collection.update_one({'email': plan_info['email']}, {'$set':{'plan':plan_info['plan']}})
-        
+    return jsonify({'status': 'success', 'plan': plan_info['plan']}), 200
 @app.route("/chatwithAI", methods=["POST"])
 def chatwithAI():
-    chat_info = request.get_json()
-    chats_collection.insert_one({'email': chat_info['email'], "question": chat_info['question'], "message": chat_info['message']})
+    answer_info = request.get_json()
+    insertAnswers(answer_info)
     return jsonify({'status': 'success'}), 200
         
 @app.route("/getChatUsers", methods=["POST"])
 def getChatUsers():
-    users = getAllUsers({'isVerified': True, 'termsAgreed': True})
-    return jsonify({'message': 'success', 'data': [user for user in users]}), 200
+    user_info = request.get_json()
+    users = getAllUsers({})
+    # users = getAllUsers({'isVerified': True, 'termsAgreed': True})
+    # { "name": "Beyazıt", "lastMessage": "Oturuyorum sen napıyosunn", "photo": "1.png" },
+    # { "name": "Murat", "lastMessage": "Selamm", "photo": "1.png" },
+    # { "name": "Oğuz", "lastMessage": "Akrep seninn", "photo": "1.png" }
+
+    results = []
+    for user in users:
+        result = {}
+        result['name'] = user['fullName']
+        if 'photo' in user:
+            result['photo'] = user['photo']
+        else:
+            result['photo'] = 'default.png'
+        # result['lastMessage'] = getLastMessage(user_info['email'], result['email'])
+        result['lastMessage'] = "Hello, how are you?"
+        results.append(result)
+    print(results)
+    return jsonify({'message': 'success', 'data': results}), 200
 
 @app.route("/getChatHistory", methods=["POST"])
 def getChatHistory():
@@ -147,3 +171,40 @@ def getAnswer():
 @app.route("/signInApple", methods=["POST"])
 def signInApple():
     return "welcome to our app" 
+
+def get_openai_response(user_input):
+    try:
+        # Define the OpenAI completion request
+        stream = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": user_input}],
+            stream=True,
+        )
+        full_response = ""
+        for chunk in stream:
+            if chunk.choices[0].delta.content is not None:
+                content = chunk.choices[0].delta.content
+                full_response += content
+        return full_response
+
+    except Exception as e:
+        return e
+
+def getMatchScore(fuser, suser):
+    query = """
+    Please provide a matching score between there 2 arrays
+    1. """+fuser['questions']+"""
+    2. """+suser['questions']+"""
+    Note: return only the matching score without % sign
+    """
+    score = get_openai_response(query)
+    return score
+
+@app.route("/getSuggestMatchs", methods=["POST"])
+def getSuggestMatchs():
+    params = request.get_json()
+    fuser = getUserDataForMatching(params['email'])
+    userDatas =  getAllUsersDataForMatching()
+    for suser in userDatas:
+        score = getMatchScore(fuser, suser)
+    return "success"
