@@ -113,10 +113,13 @@ def uploadPhoto():
         os.makedirs('photos')
     try:
         # Save the file to the specified location
-        file.save(os.path.join('photos', file.filename))
-        print("File uploaded successfully")
         params = request.get_json()
         user = getUser({"email": params["email"]})
+        photos = user['photos']
+        file.save(os.path.join('photos', photos.length+1))
+        print("File uploaded successfully")
+        photos.append(photos.length+1)
+        updateUserData(email, {"photo": photos})
     except:
         print("File upload failed")
     return 'File uploaded successfully', 200
@@ -126,23 +129,24 @@ def selectPlan():
     plan_info = request.get_json()
     user = getUser({"email":plan_info["email"]})
     if user:
-        users_collection.update_one({'email': plan_info['email']}, {'$set':{'plan':plan_info['plan']}})
+        updateUserData(plan_info['email'], {'plan':plan_info['plan']})
     return jsonify({'status': 'success', 'plan': plan_info['plan']}), 200
 @app.route("/chatwithAI", methods=["POST"])
 def chatwithAI():
     answer_info = request.get_json()
     insertAnswers(answer_info)
     return jsonify({'status': 'success'}), 200
+
+@app.route("/chatwithUser", methods=["POST"])
+def chatwithUser():
+    chat_info = request.get_json()
+    insertChat(chat_info)
+    return jsonify({'status': 'success'}), 200
         
 @app.route("/getChatUsers", methods=["POST"])
 def getChatUsers():
     user_info = request.get_json()
     users = getAllUsers({})
-    # users = getAllUsers({'isVerified': True, 'termsAgreed': True})
-    # { "name": "Beyazıt", "lastMessage": "Oturuyorum sen napıyosunn", "photo": "1.png" },
-    # { "name": "Murat", "lastMessage": "Selamm", "photo": "1.png" },
-    # { "name": "Oğuz", "lastMessage": "Akrep seninn", "photo": "1.png" }
-
     results = []
     for user in users:
         result = {}
@@ -151,8 +155,7 @@ def getChatUsers():
             result['photo'] = user['photo']
         else:
             result['photo'] = 'default.png'
-        # result['lastMessage'] = getLastMessage(user_info['email'], result['email'])
-        result['lastMessage'] = "Hello, how are you?"
+        result['lastMessage'] = getLastMessage(user_info['email'], result['email'])
         results.append(result)
     print(results)
     return jsonify({'message': 'success', 'data': results}), 200
@@ -174,7 +177,6 @@ def signInApple():
 
 def get_openai_response(user_input):
     try:
-        # Define the OpenAI completion request
         stream = client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content": user_input}],

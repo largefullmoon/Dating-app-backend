@@ -14,4 +14,8 @@ def getLastMessage(main_email, chatUser_email):
 	if 'message' in chat:
 		return chat['message']
 	else:
-		return ''
+		return 'Hello, how are you?'
+def insertChat(chat_info):
+	chats_collection.insert_one({'from': chat_info['from'], 'to': chat_info['to'], 'message': chat_info['message'], 'time': chat_info['time']})
+	return True
+	pass

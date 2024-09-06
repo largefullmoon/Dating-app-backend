@@ -26,7 +26,8 @@ def getUserDataForMatching(email):
 def getAllUsersDataForMatching(email):
     users = users_collection.find({"email": {"$ne": email}}, {"_id": False})
     return users
-
+def updateUserData(email, data):
+    users_collection.update_one({'email': email}, {'$set':data})
 def insertAnswers(answer_info):
     user = users_collection.find_one({"email": answer_info['email']}, {"_id": False})
     questions = user['questions']
