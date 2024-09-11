@@ -16,7 +16,7 @@ def getAllUsers(where):
     users = users_collection.find(where)
     return users
 def getUser(where):
-    user = users_collection.find_one({'isVerified': True, 'termsAgreed': True})
+    user = users_collection.find_one(where)
     return user
 
 def getUserDataForMatching(email):
@@ -28,8 +28,12 @@ def getAllUsersDataForMatching(email):
     return users
 def updateUserData(email, data):
     users_collection.update_one({'email': email}, {'$set':data})
+
 def insertAnswers(answer_info):
     user = users_collection.find_one({"email": answer_info['email']}, {"_id": False})
-    questions = user['questions']
-    questions.append({'question': answer_info['question'], 'answer': answer_info['answer']})
+    if "questions" in user:
+        questions = user['questions']
+    else:
+        questions = []
+    questions.append({'question': answer_info['question'], 'message': answer_info['answer']})
     users_collection.update_one({"email": answer_info['email']}, {"$set": {'questions': questions}})
