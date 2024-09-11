@@ -35,30 +35,30 @@ def welcome():
 @app.route("/registerUser", methods=["POST"])
 def registerUser():
     new_user = request.get_json()
-    infos = new_user['userInformation']
-    phoneNumner = new_user['phoneNumber']
-    isexists = checkUserExists(infos["email"])
+    isexists = checkUserExists(new_user["email"])
+    if isexists:
+        return "user already exists", 404
     try:
         verifyCode = random.randint(10000, 99999)
         message_body = 'Hello, This is your verification code for Tyche: '+ str(verifyCode)
         # sms_sid = send_sms(phoneNumner, message_body)
         user_json = {
-            'email': infos['email'],
-            'firstName': infos['firstName'],
-            'lastName': infos['lastName'],
-            'fullName': infos['firstName']+" "+infos['lastName'],
-            'birthday': infos['birthday'],
-            'sex': infos['sex'],
-            'birthdayPresent': infos['birthdayPresent'],
-            'phoneNumber': phoneNumner,
+            'email': new_user['email'],
+            'firstName': new_user['firstName'],
+            'lastName': new_user['lastName'],
+            'fullName': new_user['firstName']+" "+new_user['lastName'],
+            'birthday': new_user['birthday'],
+            'sex': new_user['sex'],
+            'birthdayPresent': new_user['birthdayPresent'],
+            'phoneNumber': new_user['phoneNumner'],
             'verifyCode': verifyCode
         }
         saveUser(user_json)
         print("success")
-        return "success", 200
+        return "register successed", 200
     except Exception as e:
         print(e)
-        return "failure", 404
+        return "register failed", 404
 @app.route("/verifyCode", methods=["POST"])
 def verifyCode():
     params = request.get_json()
