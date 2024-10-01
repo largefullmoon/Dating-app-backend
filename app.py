@@ -29,9 +29,26 @@ db = client["mobileapp"]
 users_collection = db["users"]
 chats_collection = db["chats"]
 
+import numpy as np
+from scipy.optimize import fsolve
+import logging, math
+# logging.basicConfig(filename='actions.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 @app.route("/", methods=["get"])
 def welcome():
-    return "welcome"
+    from scipy.optimize import fsolve
+    import numpy as np
+    number = input("Please enter a value: ")
+    # Define the function
+    def equation(x):
+        return x * np.log10(x) - x - float(number)*2
+
+    # Initial guess for x
+    x_initial_guess = 10  # An initial guess. Adjust if needed.
+
+    # Solve the equation
+    x_solution = fsolve(equation, x_initial_guess)
+    
+    print("""The sold amount is : """+round(x_solution[0])+"""\n The price is """+(1.5 + 0.3 * np.log10(x_solution[0])))
 @app.route("/registerUser", methods=["POST"])
 def registerUser():
     new_user = request.get_json()
@@ -50,8 +67,9 @@ def registerUser():
             'birthday': new_user['birthday'],
             'sex': new_user['sex'],
             'birthdayPresent': new_user['birthdayPresent'],
-            'phoneNumber': new_user['phoneNumner'],
-            'verifyCode': verifyCode
+            'phoneNumber': new_user['phoneNumber'],
+            'verifyCode': verifyCode,
+            'photo' : ["default"]
         }
         saveUser(user_json)
         print("success")
@@ -62,25 +80,33 @@ def registerUser():
 @app.route("/verifyCode", methods=["POST"])
 def verifyCode():
     params = request.get_json()
-    user = getUser({"email":params["email"], "verifyCode": params["verifyCode"]})
+    user = getUserInfo({"email":params["email"], "verifyCode": params["verifyCode"]})
     if user:
         users_collection.update_one({'email': params["email"]}, {'$set':{'isVerified':True}})
 
 @app.route("/agreeTerms", methods=["POST"])
 def agreeTerms():
     user_info = request.get_json()
-    user = getUser({"email":user_info["email"]}) # check if user exist
-    if user:
-        users_collection.update_one({'email': user_info["email"]}, {'$set':{'termsAgreed':True}})
-
+    try:
+        user = getUserInfo({"email":user_info["email"]}) # check if user exist
+        if user:
+            users_collection.update_one({'email': user_info["email"]}, {'$set':{'termsAgreed':True}})
+        print("success")
+        return "register successed", 200
+    except Exception as e:
+        print(e)
+        return "register failed", 404
+    
 @app.route("/getPhoto/<filename>", methods=["GET"])
 def getPhoto(filename):
     # Make sure the directory exists
     if not os.path.exists('photos'):
+        print('Directory not found')
         return 'Directory not found', 404
 
     # Check if the file exists in the directory
     if not os.path.exists(os.path.join('photos', filename)):
+        print('File not found')
         return 'File not found', 404
 
     # Send the file from the directory
@@ -89,11 +115,11 @@ def getPhoto(filename):
 @app.route("/getPhotoList", methods=["POST"])
 def getPhotoList():
     user_info = request.get_json()
-    user = getUser({"email" : user_info['email']})
-    if 'photos' in user:
-        photos = user['photos']
+    user = getUserInfo({"email" : user_info['email']})
+    if 'photo' in user:
+        photos = user['photo']
     else:
-        photos = ["default.png","default.png","default.png","default.png","default.png","default.png"]
+        photos = ["default.png"]
     return jsonify({'status': 'success', 'photos': photos}), 200
 @app.route("/uploadPhoto", methods=["POST"])
 def uploadPhoto():
@@ -112,56 +138,58 @@ def uploadPhoto():
     try:
         # Save the file to the specified location
         params = request.form
-        user = getUser({"email": params["email"]})
-        if "photos" in user:
-            photos = user['photos']
+        user = getUserInfo({"email": params["email"]})
+        if "photo" in user:
+            photos = user['photo']
         else:
             photos = []
         file_root, file_extension = os.path.splitext(file.filename)
-        filename = (len(photos)+1)+file_extension
-        print(filename)
+        filename = params["number"]+'.png'
         file.save(os.path.join('photos', filename))
-        print("File uploaded successfully")
-        photos.append(len(photos)+1)
+        photos = [params["number"] if x == params["number"] else x for x in photos]
+        if params["number"] not in photos:
+            photos.append(params["number"])
         updateUserData(params["email"], {"photo": photos})
-    except:
-        print("File upload failed")
+    except Exception as e:
+        print(e)
     return 'File uploaded successfully', 200
 
 @app.route("/verifyPhoneNumber", methods=["POST"])
 def verifyPhoneNumber():
     verifyInfo = request.get_json()
-    user = getUser({"email":verifyInfo["email"]})
-    if user['verifyCode'] == verifyInfo['code']:
+    user = getUserInfo({"email":verifyInfo["email"]})
+    print(user)
+    print(verifyInfo)
+    if str(user['verifyCode']) == verifyInfo['code']:
         updateUserData(verifyInfo['email'], {'verified':True})
+        print("success")
         return jsonify({'message': 'success'}), 200
     else:
-        return jsonify({'message': 'failed'}), 200
-        
+        print("failed")
+        return jsonify({'message': 'failed'}), 400
 
 @app.route("/selectPlan", methods=["POST"])
 def selectPlan():
     plan_info = request.get_json()
-    user = getUser({"email":plan_info["email"]})
+    user = getUserInfo({"email":plan_info["email"]})
     if user:
         updateUserData(plan_info['email'], {'plan':plan_info['plan']})
     return jsonify({'status': 'success', 'plan': plan_info['plan']}), 200
-@app.route("/chatwithAI", methods=["POST"])
-def chatwithAI():
+@app.route("/answerQuestion", methods=["POST"])
+def answerQuestion():
     answer_info = request.get_json()
     insertAnswers(answer_info)
     return jsonify({'status': 'success'}), 200
-
+@app.route("/getChatList", methods=["POST"])
+async def getChatList():
+    params = request.get_json()
+    chatList = await getChats(params)
+    return jsonify({'data': chatList}), 200
 @socketio.on('chatwithUser')
 def handle_message(chat_info):
+    print(chat_info)
     insertChat(chat_info)
     send(chat_info, broadcast=True)
-    
-@app.route("/chatwithUser", methods=["POST"])
-def chatwithUser():
-    chat_info = request.get_json()
-    insertChat(chat_info)
-    return jsonify({'status': 'success'}), 200
         
 @app.route("/getChatUsers", methods=["POST"])
 def getChatUsers():
@@ -173,6 +201,8 @@ def getChatUsers():
             continue
         result = {}
         result['name'] = user['fullName']
+        result['email'] = user['email']
+        result['birthday'] = user['birthday']
         if 'photo' in user:
             result['photo'] = user['photo']
         else:
@@ -182,21 +212,35 @@ def getChatUsers():
     print(results)
     return jsonify({'message': 'success', 'data': results}), 200
 
+@app.route("/getUser", methods=["POST"])
+async def getUser():
+    try:
+        params = request.get_json()
+        user = await getUserInfo({'email':params['email']})
+        return jsonify({'message': 'success', 'data': user}), 200
+    except Exception as e:
+        print(e)
+
 @app.route("/getChatHistory", methods=["POST"])
 def getChatHistory():
     user_info = request.get_json()
     chats = chats_collection.find_one({"from-email":user_info["from-email"], "to-email":user_info["to-email"]}) # check if user exist
     return jsonify({'message': 'success', 'data': [chat for chat in chats]}), 200
 
-
-app.route("/getAnswer", methods=["POST"])
-def getAnswer():
-    return "welcome chat"
-
 @app.route("/signInApple", methods=["POST"])
 def signInApple():
     return "welcome to our app" 
 
+@app.route("/getUserPhoto", methods=["POST"])
+async def getUserPhoto():
+    params = request.get_json()
+    print(params)
+    user = await getUserInfo({"email":params["email"]})
+    if 'photo' in user:
+        photo = user['photo'][0]
+    else:
+        photo = 'default'
+    return jsonify({'message': 'success', 'photo': photo}), 200
 def get_openai_response(user_input):
     try:
         stream = client.chat.completions.create(
