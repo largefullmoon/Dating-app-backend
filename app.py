@@ -78,17 +78,17 @@ def registerUser():
         print(e)
         return "register failed", 404
 @app.route("/verifyCode", methods=["POST"])
-def verifyCode():
+async def verifyCode():
     params = request.get_json()
-    user = getUserInfo({"email":params["email"], "verifyCode": params["verifyCode"]})
+    user = await getUserInfo({"email":params["email"], "verifyCode": params["verifyCode"]})
     if user:
         users_collection.update_one({'email': params["email"]}, {'$set':{'isVerified':True}})
 
 @app.route("/agreeTerms", methods=["POST"])
-def agreeTerms():
+async def agreeTerms():
     user_info = request.get_json()
     try:
-        user = getUserInfo({"email":user_info["email"]}) # check if user exist
+        user = await getUserInfo({"email":user_info["email"]}) # check if user exist
         if user:
             users_collection.update_one({'email': user_info["email"]}, {'$set':{'termsAgreed':True}})
         print("success")
@@ -113,16 +113,16 @@ def getPhoto(filename):
     return send_from_directory('photos', filename)
 
 @app.route("/getPhotoList", methods=["POST"])
-def getPhotoList():
+async def getPhotoList():
     user_info = request.get_json()
-    user = getUserInfo({"email" : user_info['email']})
+    user = await getUserInfo({"email" : user_info['email']})
     if 'photo' in user:
         photos = user['photo']
     else:
         photos = ["default.png"]
     return jsonify({'status': 'success', 'photos': photos}), 200
 @app.route("/uploadPhoto", methods=["POST"])
-def uploadPhoto():
+async def uploadPhoto():
     if 'file' not in request.files:
         print("No file part")
         return 'No file part', 400
@@ -138,7 +138,7 @@ def uploadPhoto():
     try:
         # Save the file to the specified location
         params = request.form
-        user = getUserInfo({"email": params["email"]})
+        user = await getUserInfo({"email": params["email"]})
         if "photo" in user:
             photos = user['photo']
         else:
@@ -155,9 +155,9 @@ def uploadPhoto():
     return 'File uploaded successfully', 200
 
 @app.route("/verifyPhoneNumber", methods=["POST"])
-def verifyPhoneNumber():
+async def verifyPhoneNumber():
     verifyInfo = request.get_json()
-    user = getUserInfo({"email":verifyInfo["email"]})
+    user = await getUserInfo({"email":verifyInfo["email"]})
     print(user)
     print(verifyInfo)
     if str(user['verifyCode']) == verifyInfo['code']:
@@ -169,9 +169,9 @@ def verifyPhoneNumber():
         return jsonify({'message': 'failed'}), 400
 
 @app.route("/selectPlan", methods=["POST"])
-def selectPlan():
+async def selectPlan():
     plan_info = request.get_json()
-    user = getUserInfo({"email":plan_info["email"]})
+    user = await getUserInfo({"email":plan_info["email"]})
     if user:
         updateUserData(plan_info['email'], {'plan':plan_info['plan']})
     return jsonify({'status': 'success', 'plan': plan_info['plan']}), 200
