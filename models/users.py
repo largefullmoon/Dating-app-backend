@@ -15,7 +15,7 @@ def saveUser(user_json):
 def getAllUsers(where):
     users = users_collection.find(where)
     return users
-def getUser(where):
+async def getUserInfo(where):
     user = users_collection.find_one(where)
     return user
 
@@ -35,5 +35,5 @@ def insertAnswers(answer_info):
         questions = user['questions']
     else:
         questions = []
-    questions.append({'question': answer_info['question'], 'message': answer_info['answer']})
+    questions.append({'question': answer_info['question'], 'message': answer_info['message']})
     users_collection.update_one({"email": answer_info['email']}, {"$set": {'questions': questions}})
