@@ -141,6 +141,8 @@ async def uploadPhoto():
         user = await getUserInfo({"email": params["email"]})
         if "photo" in user:
             photos = user['photo']
+            if photos[0] == 'default':
+                photos = []
         else:
             photos = []
         file_root, file_extension = os.path.splitext(file.filename)
