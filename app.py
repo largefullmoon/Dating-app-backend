@@ -29,26 +29,20 @@ db = client["mobileapp"]
 users_collection = db["users"]
 chats_collection = db["chats"]
 
-import numpy as np
-from scipy.optimize import fsolve
 import logging, math
 # logging.basicConfig(filename='actions.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 @app.route("/", methods=["get"])
 def welcome():
-    from scipy.optimize import fsolve
-    import numpy as np
-    number = input("Please enter a value: ")
-    # Define the function
-    def equation(x):
-        return x * np.log10(x) - x - float(number)*2
-
-    # Initial guess for x
-    x_initial_guess = 10  # An initial guess. Adjust if needed.
-
-    # Solve the equation
-    x_solution = fsolve(equation, x_initial_guess)
-    
-    print("""The sold amount is : """+round(x_solution[0])+"""\n The price is """+(1.5 + 0.3 * np.log10(x_solution[0])))
+    verifyCode = random.randint(10000, 99999)
+    message_body = 'Hello, This is your verification code for Tyche: '+ str(verifyCode)
+    number = request.args.get('number')
+    sms_sid = send_sms(number, message_body)
+    return "welcome"
+@app.route("/webhook", methods=["post"])
+def webhook():
+    data = request.get_json()
+    print(data)
+    return {"data" : "webHook is running"}
 @app.route("/registerUser", methods=["POST"])
 def registerUser():
     new_user = request.get_json()
@@ -58,7 +52,6 @@ def registerUser():
     try:
         verifyCode = random.randint(10000, 99999)
         message_body = 'Hello, This is your verification code for Tyche: '+ str(verifyCode)
-        # sms_sid = send_sms(phoneNumner, message_body)
         user_json = {
             'email': new_user['email'],
             'firstName': new_user['firstName'],
@@ -72,6 +65,7 @@ def registerUser():
             'photo' : ["default"]
         }
         saveUser(user_json)
+        sms_sid = send_sms(new_user['phoneNumber'], message_body)
         print("success")
         return "register successed", 200
     except Exception as e:
@@ -116,7 +110,7 @@ def getPhoto(filename):
 async def getPhotoList():
     user_info = request.get_json()
     user = await getUserInfo({"email" : user_info['email']})
-    if 'photo' in user:
+    if user and 'photo' in user:
         photos = user['photo']
     else:
         photos = ["default.png"]
@@ -131,13 +125,13 @@ async def uploadPhoto():
     if file.filename == '':
         print("No selected file")
         return 'No selected file', 400
-
     # Ensure the 'photos' directory exists
     if not os.path.exists('photos'):
         os.makedirs('photos')
     try:
         # Save the file to the specified location
         params = request.form
+        print(params)
         user = await getUserInfo({"email": params["email"]})
         if "photo" in user:
             photos = user['photo']
@@ -146,7 +140,7 @@ async def uploadPhoto():
         else:
             photos = []
         file_root, file_extension = os.path.splitext(file.filename)
-        filename = params["number"]+'.png'
+        filename = params["email"]+"-"+params["number"]+'.png'
         file.save(os.path.join('photos', filename))
         photos = [params["number"] if x == params["number"] else x for x in photos]
         if params["number"] not in photos:
@@ -155,7 +149,17 @@ async def uploadPhoto():
     except Exception as e:
         print(e)
     return 'File uploaded successfully', 200
-
+@app.route("/updatePhotoList", methods=["POST"])
+async def updatePhotoList():
+    params = request.form
+    updatedphotolist = params['data']
+    for photo in updatedphotolist:
+        filename = params["email"]+"-"+photo["from"]+'.png'
+        original_path = os.path.join('photos', filename)
+        new_filename = params["email"]+"-"+photo["to"]+'.png'
+        new_path = os.path.join('photos', new_filename)
+        os.rename(original_path, new_path)
+    return 'Updated successfully', 200    
 @app.route("/verifyPhoneNumber", methods=["POST"])
 async def verifyPhoneNumber():
     verifyInfo = request.get_json()
@@ -187,6 +191,13 @@ async def getChatList():
     params = request.get_json()
     chatList = await getChats(params)
     return jsonify({'data': chatList}), 200
+
+@app.route("/setChatStatus", methods=["POST"])
+async def setChatStatus():
+    params = request.get_json()
+    chatList = await readChatList(params)
+    return jsonify({'status': 'success'}), 200
+
 @socketio.on('chatwithUser')
 def handle_message(chat_info):
     print(chat_info)
@@ -194,7 +205,7 @@ def handle_message(chat_info):
     send(chat_info, broadcast=True)
         
 @app.route("/getChatUsers", methods=["POST"])
-def getChatUsers():
+async def getChatUsers():
     user_info = request.get_json()
     users = getAllUsers({})
     results = []
@@ -209,7 +220,9 @@ def getChatUsers():
             result['photo'] = user['photo']
         else:
             result['photo'] = 'default.png'
-        result['lastMessage'] = getLastMessage(user_info['email'], user['email'])
+        lastChat = await getLastMessage(user_info['email'], user['email'])
+        result['lastMessage'] = lastChat['message']
+        result['read'] = lastChat['read']
         results.append(result)
     print(results)
     return jsonify({'message': 'success', 'data': results}), 200
@@ -218,6 +231,7 @@ def getChatUsers():
 async def getUser():
     try:
         params = request.get_json()
+        print(params, "params")
         user = await getUserInfo({'email':params['email']})
         return jsonify({'message': 'success', 'data': user}), 200
     except Exception as e:
