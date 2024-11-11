@@ -16,7 +16,7 @@ def getAllUsers(where):
     users = users_collection.find(where)
     return users
 async def getUserInfo(where):
-    user = users_collection.find_one(where)
+    user = users_collection.find_one(where,{"_id": 0})
     return user
 
 def getUserDataForMatching(email):

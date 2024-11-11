@@ -4,7 +4,7 @@ client = MongoClient("mongodb://127.0.0.1:27017/")
 db = client["Tyche"]
 chats_collection = db["chats"]
 
-def getLastMessage(main_email, chatUser_email):
+async def getLastMessage(main_email, chatUser_email):
     print(main_email)
     print(chatUser_email)
     chats = chats_collection.find({
@@ -20,11 +20,18 @@ def getLastMessage(main_email, chatUser_email):
         chat = None  # Handle case when the list is empty
     if chat:
         if 'message' in chat:
-            return chat['message']
+            if 'read' in chat:
+                isRead = chat['read']
+            else:
+                isRead = False
+            if(chat['from']==main_email):
+                isRead = True
+            
+            return {'message':chat['message'], 'read':isRead}
         else:
-            return 'no chats'
+            return {'message':'no chats', 'read':True}
     else:
-        return 'no chats'
+        return {'message':'no chats', 'read':True}
 
 def insertChat(chat_info):
     print(chat_info)
@@ -51,3 +58,6 @@ async def getChats(params):
         return list(chats)  # Convert the cursor to a list
     else:
         return []
+async def readChatList(params):
+    chats_collection.update_many({'from':params['from'], 'to':params['email']},{'$set':{'read':True}})
+    return True
