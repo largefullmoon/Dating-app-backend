@@ -33,11 +33,15 @@ import logging, math
 # logging.basicConfig(filename='actions.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 @app.route("/", methods=["get"])
 def welcome():
+    return "welcome"
+@app.route("/phone", methods=["post"])
+def phone():
     verifyCode = random.randint(10000, 99999)
     message_body = 'Hello, This is your verification code for Tyche: '+ str(verifyCode)
-    number = request.args.get('number')
+    data = request.get_json()
+    number = data['number']
     sms_sid = send_sms(number, message_body)
-    return "welcome"
+    return {"data" : "welcome"}
 @app.route("/webhook", methods=["post"])
 def webhook():
     data = request.get_json()
