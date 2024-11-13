@@ -1,7 +1,7 @@
 from pymongo import MongoClient
 
 client = MongoClient("mongodb://127.0.0.1:27017/")
-db = client["Tyche"]
+db = client["tyche_app"]
 chats_collection = db["chats"]
 
 async def getLastMessage(main_email, chatUser_email):

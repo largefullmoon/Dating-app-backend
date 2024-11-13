@@ -1,6 +1,6 @@
 from pymongo import MongoClient
 client = MongoClient("mongodb://127.0.0.1:27017/")
-db = client["Tyche"]
+db = client["tyche_app"]
 users_collection = db["users"]
 
 def checkUserExists(email):

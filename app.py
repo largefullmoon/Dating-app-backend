@@ -25,7 +25,7 @@ app.app_context().push()
 socketio = SocketIO(app, cors_allowed_origins='*')
 
 client = MongoClient("mongodb://127.0.0.1:27017/")
-db = client["mobileapp"]
+db = client["tyche_app"]
 users_collection = db["users"]
 chats_collection = db["chats"]
 
